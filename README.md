@@ -1,9 +1,12 @@
-# rust-chip-8
+# Rust CHIP-8
 A chip-8 emulator written in rust
 
 --------------------------------------------------
 ### Documentation
-http://www.multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter/
+Here is my [Rust CHIP-8 emulator documentation](EmulatorDoc.md), but you can find all the sources
+I used below:
+- http://www.multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter/
+- https://en.wikipedia.org/wiki/CHIP-8#Virtual_machine_description
 
 ### Games
 https://github.com/dmatlack/chip8/tree/master/roms/games
