@@ -3,8 +3,5 @@
 // Distributed under the MIT licence
 //************************************************************************
 
-mod chip8;
-
-fn main() {
-    println!("Hello, world!");
-}
+pub mod cpu;
+pub mod memory;
