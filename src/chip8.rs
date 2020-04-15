@@ -20,10 +20,12 @@ pub struct Chip8 {
     registers            : [u8; CHIP8_REGISTER_COUNT],
     addr_register        : u16,
     program_counter      : u16,
+    clock_speed          : u16,
     last_instruction_time: Option<SystemTime>,
 
     // Memory
-    memory: [u8; CHIP8_MEMORY_SIZE]
+    memory: [u8; CHIP8_MEMORY_SIZE],
+
 }
 
 impl Chip8 {
@@ -32,7 +34,8 @@ impl Chip8 {
             registers      : [0; CHIP8_REGISTER_COUNT],
             addr_register  : 0,
             program_counter: 0,
-            memory: [0; CHIP8_MEMORY_SIZE],
+            clock_speed    : CHIP8_CPU_CLOCK_SPEED,
+            memory         : [0; CHIP8_MEMORY_SIZE],
             last_instruction_time: None,
         }
     }
@@ -50,13 +53,22 @@ impl Chip8 {
             let duration = self.last_instruction_time.unwrap().elapsed().unwrap();
 
             // We have to sleep
-            if duration < Duration::from_micros(1_000_000 / CHIP8_CPU_CLOCK_SPEED as u64) {
-                sleep(duration - Duration::from_micros(1_000_000 / CHIP8_CPU_CLOCK_SPEED as u64));
+            if duration < Duration::from_micros(1_000_000 / self.clock_speed as u64) {
+                sleep(duration - Duration::from_micros(1_000_000 / self.clock_speed as u64));
             }
         }
 
         // Set the new last instruction time
         self.last_instruction_time = Some(time_now);
+    }
+
+    pub fn change_cpu_clock_speed(&mut self, clock_speed_hz: u16) {
+        if clock_speed_hz == 0 {
+            self.clock_speed = CHIP8_CPU_CLOCK_SPEED;
+        }
+        else {
+            self.clock_speed = clock_speed_hz;
+        }
     }
 }
 
