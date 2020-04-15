@@ -59,8 +59,54 @@ impl Chip8 {
 
 // ------- OPCODES -------
 impl Chip8 {
+    fn execute_opcode(&mut self, opcode: OpCode) {
+        match opcode {
+            0x00E0          => { self.clear_screen(); }
+            0x00EE          => { self.return_from_subroutine(); }
+            0x0000..=0x0FFF => { self.call_rca1802_program(opcode); }
+            0x1000..=0x1FFF => { self.goto(opcode); }
+            0x2000..=0x2FFF => { self.call_subroutine(opcode); }
+            0x3000..=0x3FFF => { self.if_eq_const_skip(opcode); }
+            0x4000..=0x4FFF => { self.if_neq_const_skip(opcode); }
+            0x5000..=0x5FF0 => { self.if_eq_reg_skip(opcode); }
+            0x6000..=0x6FFF => { self.set_reg(opcode); }
+            0x7000..=0x7FFF => { self.add_const_to_reg(opcode); }
+
+            0x8000..=0x8FFF if opcode & 0x000F == 0x0 => { self.copy_reg(opcode); }
+            0x8000..=0x8FFF if opcode & 0x000F == 0x1 => { self.or_reg(opcode); }
+            0x8000..=0x8FFF if opcode & 0x000F == 0x2 => { self.and_reg(opcode); }
+            0x8000..=0x8FFF if opcode & 0x000F == 0x3 => { self.xor_reg(opcode); }
+            0x8000..=0x8FFF if opcode & 0x000F == 0x4 => { self.and_reg(opcode); }
+            0x8000..=0x8FFF if opcode & 0x000F == 0x5 => { self.sub_reg1_to_reg0(opcode); }
+            0x8000..=0x8FFF if opcode & 0x000F == 0x6 => { self.shift_right_reg(opcode); }
+            0x8000..=0x8FFF if opcode & 0x000F == 0x7 => { self.sub_reg0_to_reg1(opcode); }
+            0x8000..=0x8FFF if opcode & 0x000F == 0xE => { self.shift_left_reg(opcode); }
+
+            0x9000..=0x9FF0 => { self.if_neq_reg_skip(opcode); }
+            0xA000..=0xAFFF => { self.set_addr(opcode); }
+            0xB000..=0xBFFF => { self.jump_to_addr(opcode); }
+            0xC000..=0xCFFF => { self.rand(opcode); }
+            0xD000..=0xDFFF => { self.draw(opcode); }
+
+            0xE09E..=0xEF9E if opcode & 0x00FF == 0x9E => { self.if_eq_key_skip(opcode); }
+            0xE0A1..=0xEFA1 if opcode & 0x00FF == 0xA1 => { self.if_neq_key_skip(opcode); }
+
+            0xF007..=0xFF07 if opcode & 0x00FF == 0x07 => { self.get_delay_timer_value(opcode); }
+            0xF00A..=0xFF0A if opcode & 0x00FF == 0x0A => { self.get_key_value(opcode); }
+            0xF015..=0xFF15 if opcode & 0x00FF == 0x15 => { self.set_delay_timer(opcode); }
+            0xF018..=0xFF18 if opcode & 0x00FF == 0x18 => { self.set_sound_timer(opcode); }
+            0xF01E..=0xFF1E if opcode & 0x00FF == 0x1E => { self.add_reg_to_addr(opcode); }
+            0xF029..=0xFF29 if opcode & 0x00FF == 0x29 => { self.set_sprite_to_addr(opcode); }
+            0xF033..=0xFF33 if opcode & 0x00FF == 0x33 => { self.set_bcd(opcode); }
+            0xF055..=0xFF55 if opcode & 0x00FF == 0x55 => { self.reg_dump(opcode); }
+            0xF065..=0xFF65 if opcode & 0x00FF == 0x65 => { self.reg_load(opcode); }
+
+            _ => { panic!("Unknowed OPCODE!"); }
+        }
+    }
+
     // 0NNN
-    fn call_rca1802_program(&self) {
+    fn call_rca1802_program(&self, _op_code: OpCode) {
         unimplemented!()
     }
 
@@ -95,7 +141,7 @@ impl Chip8 {
     }
 
     // 5XY0
-    fn if_eq_reg_skip(&mut self) {
+    fn if_eq_reg_skip(&mut self, op_code: OpCode) {
         todo!("Jump if Vx == Vy")
     }
 
@@ -155,7 +201,7 @@ impl Chip8 {
     }
 
     // 9XY0
-    fn if_neq_reg_skip(&mut self) {
+    fn if_neq_reg_skip(&mut self, op_code: OpCode) {
         todo!("Jump if Vx != Vy")
     }
 
@@ -210,7 +256,7 @@ impl Chip8 {
     }
 
     // FX1E
-    fn add_ref_to_addr(&mut self, op_code: OpCode) {
+    fn add_reg_to_addr(&mut self, op_code: OpCode) {
         todo!("I += Vx")
     }
 
