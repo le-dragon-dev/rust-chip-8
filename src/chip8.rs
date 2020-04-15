@@ -8,28 +8,31 @@ use std::thread::sleep;
 
 type OpCode   = u16;
 type Address  = u16;
-type Register = u8;
+type Register = usize;
 
 const CHIP8_REGISTER_COUNT : usize = 16;   // Nb of registers
+const CHIP8_REGISTER_VF    : usize = 0xF;  // Index
 const CHIP8_CPU_CLOCK_SPEED: u16   = 500;  // Hz
 const CHIP8_MEMORY_SIZE    : usize = 4096; // bytes
 
 pub struct Chip8 {
     // CPU
-    registers: [u8; CHIP8_REGISTER_COUNT],
-    addr_register: u16,
+    registers            : [u8; CHIP8_REGISTER_COUNT],
+    addr_register        : u16,
+    program_counter      : u16,
     last_instruction_time: Option<SystemTime>,
 
     // Memory
-    data: [u8; CHIP8_MEMORY_SIZE]
+    memory: [u8; CHIP8_MEMORY_SIZE]
 }
 
 impl Chip8 {
     pub fn new() -> Self {
         Chip8 {
-            registers    : [0; CHIP8_REGISTER_COUNT],
-            addr_register: 0,
-            data         : [0; CHIP8_MEMORY_SIZE],
+            registers      : [0; CHIP8_REGISTER_COUNT],
+            addr_register  : 0,
+            program_counter: 0,
+            memory: [0; CHIP8_MEMORY_SIZE],
             last_instruction_time: None,
         }
     }
@@ -103,6 +106,9 @@ impl Chip8 {
 
             _ => { panic!("Unknowed OPCODE!"); }
         }
+
+        // Emulate CPU speed
+        self.emulate_cpu_speed();
     }
 
     // 0NNN
@@ -147,57 +153,84 @@ impl Chip8 {
 
     // 6XNN
     fn set_reg(&mut self, op_code: OpCode) {
-        todo!("Vx = NN")
+        let (register, value) = get_reg_and_value_from_opcode(op_code);
+        self.registers[register] = value;
     }
 
     // 7XNN
     fn add_const_to_reg(&mut self, op_code: OpCode) {
-        todo!("Vx += NN")
+        let (register, value) = get_reg_and_value_from_opcode(op_code);
+        self.registers[register] += value;
     }
 
     // 8XY0
     fn copy_reg(&mut self, op_code: OpCode) {
-        todo!("Vx = Vy")
+        let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
+        self.registers[register_1] = self.registers[register_2];
     }
 
     // 8XY1
     fn or_reg(&mut self, op_code: OpCode) {
-        todo!("Vx |= Vy")
+        let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
+        self.registers[register_1] |= self.registers[register_2];
     }
 
     // 8XY2
     fn and_reg(&mut self, op_code: OpCode) {
-        todo!("Vx &= Vy")
+        let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
+        self.registers[register_1] &= self.registers[register_2];
     }
 
     // 8XY3
     fn xor_reg(&mut self, op_code: OpCode) {
-        todo!("Vx ^= Vy")
+        let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
+        self.registers[register_1] ^= self.registers[register_2];
     }
 
     // 8XY4
     fn add_reg_to_reg(&mut self, op_code: OpCode) {
-        todo!("Vx += Vy")
+        let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
+        self.registers[register_1] += self.registers[register_2];
+
+        todo!("VF is set to 1 when there's a carry, otherwise 0")
     }
 
     // 8XY5
     fn sub_reg1_to_reg0(&mut self, op_code: OpCode) {
-        todo!("Vx -= Vy")
+        let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
+        self.registers[register_1] -= self.registers[register_2];
+
+        todo!("VF is set to 0 when there's a borrow, otherwise 1")
     }
 
     // 8XY6
     fn shift_right_reg(&mut self, op_code: OpCode) {
-        todo!("Vx >>= 1")
+        let register = get_reg_from_opcode(op_code);
+
+        // Store the less significant bit in VF
+        self.registers[CHIP8_REGISTER_VF] = self.registers[register] & 0x01;
+
+        // Shift right
+        self.registers[register] >>= 1;
     }
 
     // 8XY7
     fn sub_reg0_to_reg1(&mut self, op_code: OpCode) {
-        todo!("Vx = Vy - Vx")
+        let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
+        self.registers[register_1] = self.registers[register_2] - self.registers[register_1];
+
+        todo!("VF is set to 0 when there's a borrow, otherwise 1")
     }
 
     // 8XYE
     fn shift_left_reg(&mut self, op_code: OpCode) {
-        todo!("Vx <<= 1")
+        let register = get_reg_from_opcode(op_code);
+
+        // Store the most significant bit in VF
+        self.registers[CHIP8_REGISTER_VF] = self.registers[register] & 0x80;
+
+        // Shift right
+        self.registers[register] <<= 1;
     }
 
     // 9XY0
@@ -207,12 +240,12 @@ impl Chip8 {
 
     // ANNN
     fn set_addr(&mut self, op_code: OpCode) {
-        todo!("Set address")
+        self.addr_register = get_addr_from_opcode(op_code);
     }
 
     // BNNN
     fn jump_to_addr(&mut self, op_code: OpCode) {
-        todo!("PC = NNN + V0")
+        self.program_counter = self.registers[0] as u16 + get_addr_from_opcode(op_code);
     }
 
     // CXNN
@@ -257,7 +290,14 @@ impl Chip8 {
 
     // FX1E
     fn add_reg_to_addr(&mut self, op_code: OpCode) {
-        todo!("I += Vx")
+        let register = get_reg_from_opcode(op_code);
+        let old_addr_value = self.addr_register;
+
+        // Add Vx to I
+        self.addr_register += self.registers[register] as u16;
+
+        // VF set to 1 if overflow, otherwise 0
+        self.registers[CHIP8_REGISTER_VF] = (self.addr_register < old_addr_value) as u8;
     }
 
     // FX29
@@ -272,12 +312,18 @@ impl Chip8 {
 
     // FX55
     fn reg_dump(&mut self, op_code: OpCode) {
-        todo!("Store V0 to VX (include) in memory starting at I")
+        let register = get_reg_from_opcode(op_code);
+        for x in 0 ..= register {
+            self.memory[self.addr_register as usize + x] = self.registers[x];
+        }
     }
 
     // FX65
     fn reg_load(&mut self, op_code: OpCode) {
-        todo!("Fill V0 to VX (include) registers from memory starting at I")
+        let register = get_reg_from_opcode(op_code);
+        for x in 0 ..= register {
+            self.registers[x] = self.memory[self.addr_register as usize + x];
+        }
     }
 }
 
