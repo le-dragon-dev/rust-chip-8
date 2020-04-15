@@ -3,41 +3,101 @@
 // Distributed under the MIT licence
 //************************************************************************
 
-use std::time::{SystemTime, Duration};
+use std::fs::File;
+use std::io::{Seek, SeekFrom, Read};
+use std::path::Path;
 use std::thread::sleep;
+use std::time::{SystemTime, Duration};
 
+// Aliases
 type OpCode   = u16;
 type Address  = u16;
 type Register = usize;
 
-const CHIP8_REGISTER_COUNT : usize = 16;   // Nb of registers
-const CHIP8_REGISTER_VF    : usize = 0xF;  // Index
-const CHIP8_CPU_CLOCK_SPEED: u16   = 500;  // Hz
-const CHIP8_MEMORY_SIZE    : usize = 4096; // bytes
+// Const
+const CHIP8_REGISTER_COUNT     : usize    = 16;    // Nb of registers
+const CHIP8_REGISTER_VF        : Register = 0xF;   // Index
+const CHIP8_CPU_CLOCK_SPEED    : u16      = 500;   // Hz
+const CHIP8_PROGRAM_COUNTER_INC: u16      = 2;     // Bytes
+const CHIP8_MEMORY_START       : Address  = 0x200; // Address
+const CHIP8_MEMORY_SIZE        : usize    = 4096;  // Bytes
+const CHIP8_STACK_COUNT        : usize    = 16;    // Nb of stacks
+const CHIP8_MAX_EXECUTABLE_SIZE: u16      = 3072;  // Bytes
 
+// CHIP-8 structure
 pub struct Chip8 {
     // CPU
     registers            : [u8; CHIP8_REGISTER_COUNT],
-    addr_register        : u16,
-    program_counter      : u16,
+    addr_register        : Address,
+    program_counter      : Address,
     clock_speed          : u16,
     last_instruction_time: Option<SystemTime>,
 
     // Memory
     memory: [u8; CHIP8_MEMORY_SIZE],
 
+    // Stack
+    stack    : [Address; CHIP8_STACK_COUNT],
+    stack_ptr: usize
 }
 
 impl Chip8 {
+    // Initialize the emulator
     pub fn new() -> Self {
         Chip8 {
+            // CPU
             registers      : [0; CHIP8_REGISTER_COUNT],
             addr_register  : 0,
             program_counter: 0,
             clock_speed    : CHIP8_CPU_CLOCK_SPEED,
-            memory         : [0; CHIP8_MEMORY_SIZE],
             last_instruction_time: None,
+
+            // Memory
+            memory: [0; CHIP8_MEMORY_SIZE],
+
+            // Stack
+            stack    : [0; CHIP8_STACK_COUNT],
+            stack_ptr: 0
         }
+    }
+
+    // Load the fontset in memory
+    pub fn load_fontset() {
+        todo!("Add the fontset");
+    }
+
+    // Try to load the executable in memory
+    pub fn load_executable(&mut self, path: &'static str) -> Result<(), String> {
+        let path = Path::new(path);
+
+        // The path does not exist
+        if !path.exists() {
+            return Err(format!("Error load: The path {} does not exist!", path.to_str().unwrap()));
+        }
+
+        // The path is not a file
+        if !path.is_file() {
+            return Err(format!("Error load: {} is not a file!", path.to_str().unwrap()));
+        }
+
+        // Open the file and get the size
+        let mut file  = File::open(path)
+                            .map_err(|_| format!("Impossible to load the file {}", path.to_str().unwrap()))?;
+
+        let file_size = file.seek(SeekFrom::End(0))
+                            .map_err(|_| format!("Impossible to read the file {}", path.to_str().unwrap()))?;
+
+        // If the file size is over 3kb, return an error
+        if file_size > CHIP8_MAX_EXECUTABLE_SIZE as u64 {
+            return Err(format!("The file {} is too big! ({} bytes / {} allowed bytes)",
+                               path.to_str().unwrap(), file_size, CHIP8_MAX_EXECUTABLE_SIZE));
+        }
+
+        // Copy the file into memory
+        file.read(self.memory[CHIP8_MEMORY_START as usize..=CHIP8_MAX_EXECUTABLE_SIZE as usize+CHIP8_MEMORY_START as usize].as_mut())
+            .map_err(|e| format!("Impossible to copy the executable into memory"))?;
+
+        Ok(())
     }
 }
 
@@ -62,6 +122,7 @@ impl Chip8 {
         self.last_instruction_time = Some(time_now);
     }
 
+    // Change the cpu clock speed (0 to default speed)
     pub fn change_cpu_clock_speed(&mut self, clock_speed_hz: u16) {
         if clock_speed_hz == 0 {
             self.clock_speed = CHIP8_CPU_CLOCK_SPEED;
@@ -116,7 +177,7 @@ impl Chip8 {
             0xF055..=0xFF55 if opcode & 0x00FF == 0x55 => { self.reg_dump(opcode); }
             0xF065..=0xFF65 if opcode & 0x00FF == 0x65 => { self.reg_load(opcode); }
 
-            _ => { panic!("Unknowed OPCODE!"); }
+            _ => { panic!("Unknown OPCODE {:X}!", opcode); }
         }
 
         // Emulate CPU speed
@@ -129,74 +190,107 @@ impl Chip8 {
     }
 
     // 00E0
-    fn clear_screen(&self) {
-        todo!("Clear screen")
+    fn clear_screen(&mut self) {
+        todo!("Clear screen");
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // 00EE
     fn return_from_subroutine(&mut self) {
-        todo!("Return from subroutine")
+        self.stack_ptr -= 1;
+        self.program_counter = self.stack[self.stack_ptr];
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // 1NNN
     fn goto(&mut self, op_code: OpCode) {
-        todo!("Goto address")
+        self.program_counter = get_addr_from_opcode(op_code);
     }
 
     // 2NNN
     fn call_subroutine(&mut self, op_code: OpCode) {
-        todo!("Call a subroutine")
+        let address = get_addr_from_opcode(op_code);
+        self.stack[self.stack_ptr] = self.program_counter;
+        self.stack_ptr += 1;
+        self.program_counter = address;
     }
 
     // 3XNN
     fn if_eq_const_skip(&mut self, op_code: OpCode) {
-        todo!("Jump if Vx == NN")
+        let (register, value) = get_reg_and_value_from_opcode(op_code);
+
+        // Jump
+        if self.registers[register] == value {
+            self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
+        }
+
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // 4XNN
     fn if_neq_const_skip(&mut self, op_code: OpCode) {
-        todo!("Jump if Vx != NN")
+        let (register, value) = get_reg_and_value_from_opcode(op_code);
+
+        // Jump
+        if self.registers[register] != value {
+            self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
+        }
+
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // 5XY0
     fn if_eq_reg_skip(&mut self, op_code: OpCode) {
-        todo!("Jump if Vx == Vy")
+        let (register_1, register_2) = get_reg_and_value_from_opcode(op_code);
+
+        // Jump
+        if self.registers[register_1] == register_2 {
+            self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
+        }
+
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // 6XNN
     fn set_reg(&mut self, op_code: OpCode) {
         let (register, value) = get_reg_and_value_from_opcode(op_code);
         self.registers[register] = value;
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // 7XNN
     fn add_const_to_reg(&mut self, op_code: OpCode) {
         let (register, value) = get_reg_and_value_from_opcode(op_code);
         self.registers[register] += value;
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // 8XY0
     fn copy_reg(&mut self, op_code: OpCode) {
         let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
         self.registers[register_1] = self.registers[register_2];
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // 8XY1
     fn or_reg(&mut self, op_code: OpCode) {
         let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
         self.registers[register_1] |= self.registers[register_2];
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // 8XY2
     fn and_reg(&mut self, op_code: OpCode) {
         let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
         self.registers[register_1] &= self.registers[register_2];
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // 8XY3
     fn xor_reg(&mut self, op_code: OpCode) {
         let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
         self.registers[register_1] ^= self.registers[register_2];
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // 8XY4
@@ -204,7 +298,8 @@ impl Chip8 {
         let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
         self.registers[register_1] += self.registers[register_2];
 
-        todo!("VF is set to 1 when there's a carry, otherwise 0")
+        todo!("VF is set to 1 when there's a carry, otherwise 0");
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // 8XY5
@@ -212,7 +307,8 @@ impl Chip8 {
         let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
         self.registers[register_1] -= self.registers[register_2];
 
-        todo!("VF is set to 0 when there's a borrow, otherwise 1")
+        todo!("VF is set to 0 when there's a borrow, otherwise 1");
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // 8XY6
@@ -224,6 +320,7 @@ impl Chip8 {
 
         // Shift right
         self.registers[register] >>= 1;
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // 8XY7
@@ -231,7 +328,8 @@ impl Chip8 {
         let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
         self.registers[register_1] = self.registers[register_2] - self.registers[register_1];
 
-        todo!("VF is set to 0 when there's a borrow, otherwise 1")
+        todo!("VF is set to 0 when there's a borrow, otherwise 1");
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // 8XYE
@@ -243,61 +341,79 @@ impl Chip8 {
 
         // Shift right
         self.registers[register] <<= 1;
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // 9XY0
     fn if_neq_reg_skip(&mut self, op_code: OpCode) {
-        todo!("Jump if Vx != Vy")
+        let (register_1, register_2) = get_reg_and_value_from_opcode(op_code);
+
+        // Jump
+        if self.registers[register_1] != register_2 {
+            self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
+        }
+
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // ANNN
     fn set_addr(&mut self, op_code: OpCode) {
         self.addr_register = get_addr_from_opcode(op_code);
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // BNNN
     fn jump_to_addr(&mut self, op_code: OpCode) {
         self.program_counter = self.registers[0] as u16 + get_addr_from_opcode(op_code);
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // CXNN
     fn rand(&mut self, op_code: OpCode) {
-        todo!("V0 = rand() & NN")
+        todo!("V0 = rand() & NN");
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // DXYN
     fn draw(&mut self, op_code: OpCode) {
-        unimplemented!()
+        unimplemented!();
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // EX9E
     fn if_eq_key_skip(&mut self, op_code: OpCode) {
-        todo!("if key() == Vx")
+        todo!("if key() == Vx");
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // EXA1
     fn if_neq_key_skip(&mut self, op_code: OpCode) {
-        todo!("if key() != Vx")
+        todo!("if key() != Vx");
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // FX07
     fn get_delay_timer_value(&mut self, op_code: OpCode) {
-        todo!("Vx = get_delay()")
+        todo!("Vx = get_delay()");
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // FX0A
     fn get_key_value(&mut self, op_code: OpCode) {
-        todo!("Vx = get_key()")
+        todo!("Vx = get_key()");
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // FX15
     fn set_delay_timer(&mut self, op_code: OpCode) {
-        todo!("set_delay_timer(Vx)")
+        todo!("set_delay_timer(Vx)");
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // FX18
     fn set_sound_timer(&mut self, op_code: OpCode) {
-        todo!("set_sound_timer(Vx)")
+        todo!("set_sound_timer(Vx)");
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // FX1E
@@ -310,16 +426,24 @@ impl Chip8 {
 
         // VF set to 1 if overflow, otherwise 0
         self.registers[CHIP8_REGISTER_VF] = (self.addr_register < old_addr_value) as u8;
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // FX29
     fn set_sprite_to_addr(&mut self, op_code: OpCode) {
-        todo!("I = sprite_addr[Vx]")
+        todo!("I = sprite_addr[Vx]");
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // FX33
     fn set_bcd(&mut self, op_code: OpCode) {
-        unimplemented!()
+        let register = get_reg_from_opcode(op_code);
+
+        self.memory[self.addr_register as usize]     =  self.registers[register] / 100;
+        self.memory[self.addr_register as usize + 1] = (self.registers[register] / 10)  % 10;
+        self.memory[self.addr_register as usize + 2] = (self.registers[register] % 100) % 10;
+
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // FX55
@@ -328,6 +452,7 @@ impl Chip8 {
         for x in 0 ..= register {
             self.memory[self.addr_register as usize + x] = self.registers[x];
         }
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // FX65
@@ -336,6 +461,7 @@ impl Chip8 {
         for x in 0 ..= register {
             self.registers[x] = self.memory[self.addr_register as usize + x];
         }
+        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 }
 
