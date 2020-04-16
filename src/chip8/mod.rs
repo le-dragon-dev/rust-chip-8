@@ -35,6 +35,7 @@ pub struct Chip8<Screen> where Screen: Display {
     stack_ptr: usize,
 
     // Screen
+    gfx   : [u8; CHIP8_PIXEL_COUNT],
     screen: Screen
 }
 
@@ -55,6 +56,9 @@ impl<Screen> Chip8<Screen> where Screen: Display {
             // Stack
             stack    : [0; CHIP8_STACK_COUNT],
             stack_ptr: 0,
+
+            // Screen
+            gfx: [0; CHIP8_PIXEL_COUNT],
             screen
         }
     }

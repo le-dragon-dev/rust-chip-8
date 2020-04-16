@@ -5,8 +5,10 @@
 // Represents a screen
 //************************************************************************
 
+use crate::chip8::constants::CHIP8_PIXEL_COUNT;
+
 pub trait Display {
     fn clean(&mut self);
-    fn draw(&mut self, pixels: [u8]);
+    fn draw(&mut self, pixels: [u8; CHIP8_PIXEL_COUNT]);
 }
 

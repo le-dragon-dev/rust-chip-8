@@ -6,7 +6,7 @@
 //************************************************************************
 
 use crate::chip8::Chip8;
-use crate::chip8::constants::{CHIP8_PROGRAM_COUNTER_INC, CHIP8_REGISTER_VF};
+use crate::chip8::constants::{CHIP8_PROGRAM_COUNTER_INC, CHIP8_REGISTER_VF, CHIP8_PIXEL_COUNT};
 use crate::chip8::display::Display;
 use crate::chip8::types::{OpCode, Address, Register};
 
@@ -67,6 +67,7 @@ impl<Screen> Chip8<Screen> where Screen: Display {
 
     // 00E0
     fn clear_screen(&mut self) {
+        self.gfx = [0; CHIP8_PIXEL_COUNT];
         self.screen.clean();
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
@@ -172,18 +173,20 @@ impl<Screen> Chip8<Screen> where Screen: Display {
     // 8XY4
     fn add_reg_to_reg(&mut self, op_code: OpCode) {
         let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
+
+        self.registers[CHIP8_REGISTER_VF] = (self.registers[register_2] > (0xFF - self.registers[register_1])) as u8;
         self.registers[register_1] += self.registers[register_2];
 
-        todo!("VF is set to 1 when there's a carry, otherwise 0");
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // 8XY5
     fn sub_reg1_to_reg0(&mut self, op_code: OpCode) {
         let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
+
+        self.registers[CHIP8_REGISTER_VF] = (self.registers[register_1] >= self.registers[register_2]) as u8;
         self.registers[register_1] -= self.registers[register_2];
 
-        todo!("VF is set to 0 when there's a borrow, otherwise 1");
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
@@ -202,9 +205,10 @@ impl<Screen> Chip8<Screen> where Screen: Display {
     // 8XY7
     fn sub_reg0_to_reg1(&mut self, op_code: OpCode) {
         let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
+
+        self.registers[CHIP8_REGISTER_VF] = (self.registers[register_2] >= self.registers[register_1]) as u8;
         self.registers[register_1] = self.registers[register_2] - self.registers[register_1];
 
-        todo!("VF is set to 0 when there's a borrow, otherwise 1");
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
@@ -252,9 +256,28 @@ impl<Screen> Chip8<Screen> where Screen: Display {
 
     // DXYN
     fn draw(&mut self, op_code: OpCode) {
-        let (register_1, register_2, value) = get_reg_and_reg_and_value_from_opcode(op_code);
-        todo!("Finished it");
-        self.screen.draw();
+        let (x, y, height) = get_reg_and_reg_and_value_from_opcode(op_code);
+
+        self.registers[CHIP8_REGISTER_VF] = 0;
+
+        for y_line in 0..height {
+            let pixel = self.memory[self.addr_register  as usize + y_line as usize];
+            for x_line in 0..8 {
+                // If the pixel is 1
+                if pixel & (0x80 >> x_line) != 0 {
+                    let index_pixel_memory = 0xF00usize + x as usize + x_line as usize + (y as usize + y_line as usize) * 64usize;
+
+                    // If the pixel in memory == 1, then collision -> Vf = 1
+                    if self.gfx[index_pixel_memory] == 1 {
+                        self.registers[CHIP8_REGISTER_VF] = 1;
+                    }
+
+                    self.gfx[index_pixel_memory] ^= 1;
+                }
+            }
+        }
+
+        self.screen.draw(self.gfx);
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
