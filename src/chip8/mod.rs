@@ -1,6 +1,6 @@
 //************************************************************************
 // Rust CHIP-8 emulator, created by David Garcia
-// Distributed under the MIT licence
+// Distributed under the MIT license
 //
 // CHIP-8 emulator
 //************************************************************************
@@ -8,16 +8,18 @@
 use std::time::SystemTime;
 
 use crate::chip8::constants::*;
+use crate::chip8::display::Display;
 use crate::chip8::types::Address;
 
-pub mod constants;
-pub mod cpu;
-pub mod memory;
-pub mod opcodes;
-pub mod types;
+mod constants;
+mod cpu;
+mod display;
+mod memory;
+mod opcodes;
+mod types;
 
 // CHIP-8 structure
-pub struct Chip8 {
+pub struct Chip8<Screen> where Screen: Display {
     // CPU
     registers            : [u8; CHIP8_REGISTER_COUNT],
     addr_register        : Address,
@@ -30,12 +32,15 @@ pub struct Chip8 {
 
     // Stack
     stack    : [Address; CHIP8_STACK_COUNT],
-    stack_ptr: usize
+    stack_ptr: usize,
+
+    // Screen
+    screen: Screen
 }
 
-impl Chip8 {
+impl<Screen> Chip8<Screen> where Screen: Display {
     // Initialize the emulator
-    pub fn new() -> Self {
+    pub fn new(screen: Screen) -> Self {
         Chip8 {
             // CPU
             registers      : [0; CHIP8_REGISTER_COUNT],
@@ -49,7 +54,8 @@ impl Chip8 {
 
             // Stack
             stack    : [0; CHIP8_STACK_COUNT],
-            stack_ptr: 0
+            stack_ptr: 0,
+            screen
         }
     }
 }

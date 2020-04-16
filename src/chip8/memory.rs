@@ -1,6 +1,6 @@
 //************************************************************************
 // Rust CHIP-8 emulator, created by David Garcia
-// Distributed under the MIT licence
+// Distributed under the MIT license
 //
 // Memory methods
 //************************************************************************
@@ -11,8 +11,9 @@ use std::path::Path;
 
 use crate::chip8::Chip8;
 use crate::chip8::constants::{CHIP8_MAX_EXECUTABLE_SIZE, CHIP8_MEMORY_START};
+use crate::chip8::display::Display;
 
-impl Chip8 {
+impl<Screen> Chip8<Screen> where Screen: Display {
     // Load the fontset in memory
     pub fn load_fontset() {
         todo!("Add the fontset");

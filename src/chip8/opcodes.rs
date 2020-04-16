@@ -1,15 +1,16 @@
 //************************************************************************
 // Rust CHIP-8 emulator, created by David Garcia
-// Distributed under the MIT licence
+// Distributed under the MIT license
 //
 // All Chip-8 Opcodes
 //************************************************************************
 
 use crate::chip8::Chip8;
 use crate::chip8::constants::{CHIP8_PROGRAM_COUNTER_INC, CHIP8_REGISTER_VF};
+use crate::chip8::display::Display;
 use crate::chip8::types::{OpCode, Address, Register};
 
-impl Chip8 {
+impl<Screen> Chip8<Screen> where Screen: Display {
     fn execute_opcode(&mut self, opcode: OpCode) {
         match opcode {
             0x00E0          => { self.clear_screen(); }
@@ -66,7 +67,7 @@ impl Chip8 {
 
     // 00E0
     fn clear_screen(&mut self) {
-        todo!("Clear screen");
+        self.screen.clean();
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
@@ -251,7 +252,9 @@ impl Chip8 {
 
     // DXYN
     fn draw(&mut self, op_code: OpCode) {
-        unimplemented!();
+        let (register_1, register_2, value) = get_reg_and_reg_and_value_from_opcode(op_code);
+        todo!("Finished it");
+        self.screen.draw();
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 

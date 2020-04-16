@@ -1,6 +1,6 @@
 //************************************************************************
 // Rust CHIP-8 emulator, created by David Garcia
-// Distributed under the MIT licence
+// Distributed under the MIT license
 //
 // Constants
 //************************************************************************

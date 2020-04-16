@@ -1,6 +1,6 @@
 //************************************************************************
 // Rust CHIP-8 emulator, created by David Garcia
-// Distributed under the MIT licence
+// Distributed under the MIT license
 //
 // CPU methods
 //************************************************************************
@@ -10,8 +10,9 @@ use std::time::{SystemTime, Duration};
 
 use crate::chip8::Chip8;
 use crate::chip8::constants::CHIP8_CPU_CLOCK_SPEED;
+use crate::chip8::display::Display;
 
-impl Chip8 {
+impl<Screen> Chip8<Screen> where Screen: Display {
     // Emulate clock speed, should be call after each instruction
     pub(crate) fn emulate_cpu_speed(&mut self) {
         // Get the current system time
