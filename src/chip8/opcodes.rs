@@ -1,139 +1,14 @@
 //************************************************************************
 // Rust CHIP-8 emulator, created by David Garcia
 // Distributed under the MIT licence
+//
+// All Chip-8 Opcodes
 //************************************************************************
 
-use std::fs::File;
-use std::io::{Seek, SeekFrom, Read};
-use std::path::Path;
-use std::thread::sleep;
-use std::time::{SystemTime, Duration};
+use crate::chip8::Chip8;
+use crate::chip8::constants::{CHIP8_PROGRAM_COUNTER_INC, CHIP8_REGISTER_VF};
+use crate::chip8::types::{OpCode, Address, Register};
 
-// Aliases
-type OpCode   = u16;
-type Address  = u16;
-type Register = usize;
-
-// Const
-const CHIP8_REGISTER_COUNT     : usize    = 16;    // Nb of registers
-const CHIP8_REGISTER_VF        : Register = 0xF;   // Index
-const CHIP8_CPU_CLOCK_SPEED    : u16      = 500;   // Hz
-const CHIP8_PROGRAM_COUNTER_INC: u16      = 2;     // Bytes
-const CHIP8_MEMORY_START       : Address  = 0x200; // Address
-const CHIP8_MEMORY_SIZE        : usize    = 4096;  // Bytes
-const CHIP8_STACK_COUNT        : usize    = 16;    // Nb of stacks
-const CHIP8_MAX_EXECUTABLE_SIZE: u16      = 3072;  // Bytes
-
-// CHIP-8 structure
-pub struct Chip8 {
-    // CPU
-    registers            : [u8; CHIP8_REGISTER_COUNT],
-    addr_register        : Address,
-    program_counter      : Address,
-    clock_speed          : u16,
-    last_instruction_time: Option<SystemTime>,
-
-    // Memory
-    memory: [u8; CHIP8_MEMORY_SIZE],
-
-    // Stack
-    stack    : [Address; CHIP8_STACK_COUNT],
-    stack_ptr: usize
-}
-
-impl Chip8 {
-    // Initialize the emulator
-    pub fn new() -> Self {
-        Chip8 {
-            // CPU
-            registers      : [0; CHIP8_REGISTER_COUNT],
-            addr_register  : 0,
-            program_counter: 0,
-            clock_speed    : CHIP8_CPU_CLOCK_SPEED,
-            last_instruction_time: None,
-
-            // Memory
-            memory: [0; CHIP8_MEMORY_SIZE],
-
-            // Stack
-            stack    : [0; CHIP8_STACK_COUNT],
-            stack_ptr: 0
-        }
-    }
-
-    // Load the fontset in memory
-    pub fn load_fontset() {
-        todo!("Add the fontset");
-    }
-
-    // Try to load the executable in memory
-    pub fn load_executable(&mut self, path: &'static str) -> Result<(), String> {
-        let path = Path::new(path);
-
-        // The path does not exist
-        if !path.exists() {
-            return Err(format!("Error load: The path {} does not exist!", path.to_str().unwrap()));
-        }
-
-        // The path is not a file
-        if !path.is_file() {
-            return Err(format!("Error load: {} is not a file!", path.to_str().unwrap()));
-        }
-
-        // Open the file and get the size
-        let mut file  = File::open(path)
-                            .map_err(|_| format!("Impossible to load the file {}", path.to_str().unwrap()))?;
-
-        let file_size = file.seek(SeekFrom::End(0))
-                            .map_err(|_| format!("Impossible to read the file {}", path.to_str().unwrap()))?;
-
-        // If the file size is over 3kb, return an error
-        if file_size > CHIP8_MAX_EXECUTABLE_SIZE as u64 {
-            return Err(format!("The file {} is too big! ({} bytes / {} allowed bytes)",
-                               path.to_str().unwrap(), file_size, CHIP8_MAX_EXECUTABLE_SIZE));
-        }
-
-        // Copy the file into memory
-        file.read(self.memory[CHIP8_MEMORY_START as usize..=CHIP8_MAX_EXECUTABLE_SIZE as usize+CHIP8_MEMORY_START as usize].as_mut())
-            .map_err(|e| format!("Impossible to copy the executable into memory"))?;
-
-        Ok(())
-    }
-}
-
-// ------- CPU -------
-impl Chip8 {
-    // Emulate clock speed, should be call after each instruction
-    fn emulate_cpu_speed(&mut self) {
-        // Get the current system time
-        let time_now = SystemTime::now();
-
-        // If there is an instruction before, simulate latency
-        if self.last_instruction_time.is_some() {
-            let duration = self.last_instruction_time.unwrap().elapsed().unwrap();
-
-            // We have to sleep
-            if duration < Duration::from_micros(1_000_000 / self.clock_speed as u64) {
-                sleep(duration - Duration::from_micros(1_000_000 / self.clock_speed as u64));
-            }
-        }
-
-        // Set the new last instruction time
-        self.last_instruction_time = Some(time_now);
-    }
-
-    // Change the cpu clock speed (0 to default speed)
-    pub fn change_cpu_clock_speed(&mut self, clock_speed_hz: u16) {
-        if clock_speed_hz == 0 {
-            self.clock_speed = CHIP8_CPU_CLOCK_SPEED;
-        }
-        else {
-            self.clock_speed = clock_speed_hz;
-        }
-    }
-}
-
-// ------- OPCODES -------
 impl Chip8 {
     fn execute_opcode(&mut self, opcode: OpCode) {
         match opcode {
