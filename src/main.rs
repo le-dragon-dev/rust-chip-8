@@ -54,10 +54,11 @@ impl chip8::KeyInput for FakeInput {
 fn main() -> Result<(), String> {
     // Get the rom file from the args
     let args: Vec<String> = std::env::args().collect();
-    let has_path_arg = args.len() < 2;
+    let has_path_arg = args.len() >= 2;
 
+    // If there is no path, return an error
     if !has_path_arg {
-        return Err(format!("Missing an argument: Path to the CHIP-8 ROM file!"));
+        return Err(format!("Missing the path to the CHIP-8 ROM file!"));
     }
 
     // Get the rom file path
@@ -69,6 +70,7 @@ fn main() -> Result<(), String> {
     // Load the rom file
     chip8.load_rom_file(&rom_file)?;
 
+    // Main loop
     chip8.run()
 }
 
