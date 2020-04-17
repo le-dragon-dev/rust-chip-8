@@ -10,6 +10,7 @@ use crate::chip8::types::{Address, Register};
 pub const CHIP8_REGISTER_COUNT     : usize    = 16;      // Nb of registers
 pub const CHIP8_REGISTER_VF        : Register = 0xF;     // Index
 pub const CHIP8_CPU_CLOCK_SPEED    : u16      = 500;     // Hz
+pub const CHIP8_TIMER_CLOCK_SPEED  : u16      = 60;      // Hz
 pub const CHIP8_PROGRAM_COUNTER_INC: u16      = 2;       // Bytes
 pub const CHIP8_MEMORY_START       : Address  = 0x200;   // Address
 pub const CHIP8_MEMORY_SIZE        : usize    = 4096;    // Bytes

@@ -9,18 +9,18 @@ use std::fs::File;
 use std::io::{Seek, SeekFrom, Read};
 use std::path::Path;
 
-use crate::chip8::Chip8;
+use crate::chip8::{Chip8, KeyInput};
 use crate::chip8::constants::{CHIP8_MAX_EXECUTABLE_SIZE, CHIP8_MEMORY_START};
 use crate::chip8::display::Display;
 
-impl<Screen> Chip8<Screen> where Screen: Display {
+impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput {
     // Load the fontset in memory
     pub fn load_fontset() {
         todo!("Add the fontset");
     }
 
     // Try to load the executable in memory
-    pub fn load_executable(&mut self, path: &'static str) -> Result<(), String> {
+    pub fn load_rom_file(&mut self, path: &String) -> Result<(), String> {
         let path = Path::new(path);
 
         // The path does not exist

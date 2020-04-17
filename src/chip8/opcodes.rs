@@ -5,12 +5,12 @@
 // All Chip-8 Opcodes
 //************************************************************************
 
-use crate::chip8::Chip8;
+use crate::chip8::{Chip8, KeyInput};
 use crate::chip8::constants::{CHIP8_PROGRAM_COUNTER_INC, CHIP8_REGISTER_VF, CHIP8_PIXEL_COUNT};
 use crate::chip8::display::Display;
 use crate::chip8::types::{OpCode, Address, Register};
 
-impl<Screen> Chip8<Screen> where Screen: Display {
+impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput {
     fn execute_opcode(&mut self, opcode: OpCode) {
         match opcode {
             0x00E0          => { self.clear_screen(); }
@@ -55,9 +55,6 @@ impl<Screen> Chip8<Screen> where Screen: Display {
 
             _ => { panic!("Unknown OPCODE {:X}!", opcode); }
         }
-
-        // Emulate CPU speed
-        self.emulate_cpu_speed();
     }
 
     // 0NNN
@@ -283,37 +280,53 @@ impl<Screen> Chip8<Screen> where Screen: Display {
 
     // EX9E
     fn if_eq_key_skip(&mut self, op_code: OpCode) {
-        todo!("if key() == Vx");
+        let register = get_reg_from_opcode(op_code);
+
+        if self.key_input.is_key_pressed(self.registers[register]) {
+            self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
+        }
+
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // EXA1
     fn if_neq_key_skip(&mut self, op_code: OpCode) {
-        todo!("if key() != Vx");
+        let register = get_reg_from_opcode(op_code);
+
+        if !self.key_input.is_key_pressed(self.registers[register]) {
+            self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
+        }
+
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // FX07
     fn get_delay_timer_value(&mut self, op_code: OpCode) {
-        todo!("Vx = get_delay()");
+        let register = get_reg_from_opcode(op_code);
+        self.registers[register] = self.delay_timer.get_delay();
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // FX0A
     fn get_key_value(&mut self, op_code: OpCode) {
-        todo!("Vx = get_key()");
+        let register = get_reg_from_opcode(op_code);
+
+        self.registers[register] = self.key_input.get_key();
+
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // FX15
     fn set_delay_timer(&mut self, op_code: OpCode) {
-        todo!("set_delay_timer(Vx)");
+        let register = get_reg_from_opcode(op_code);
+        self.delay_timer.start(self.registers[register]);
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // FX18
     fn set_sound_timer(&mut self, op_code: OpCode) {
-        todo!("set_sound_timer(Vx)");
+        let register = get_reg_from_opcode(op_code);
+        self.sound_timer.start(self.registers[register]);
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 

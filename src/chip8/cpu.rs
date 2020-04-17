@@ -8,13 +8,13 @@
 use std::thread::sleep;
 use std::time::{SystemTime, Duration};
 
-use crate::chip8::Chip8;
+use crate::chip8::{Chip8, KeyInput};
 use crate::chip8::constants::CHIP8_CPU_CLOCK_SPEED;
 use crate::chip8::display::Display;
 
-impl<Screen> Chip8<Screen> where Screen: Display {
+impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput {
     // Emulate clock speed, should be call after each instruction
-    pub(crate) fn emulate_cpu_speed(&mut self) {
+    fn emulate_cpu_speed(&mut self) {
         // Get the current system time
         let time_now = SystemTime::now();
 
