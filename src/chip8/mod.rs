@@ -81,4 +81,18 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
             key_input
         }
     }
+
+    // Main loop
+    pub fn run(&mut self) -> Result<(), String> {
+        todo!("Load fontset");
+        todo!("Check if a program is loaded");
+        todo!("Set the PC at 0x200");
+        todo!("loop");
+            todo!("get the opcode");
+            todo!("match opcode");
+            todo!("Emulate CPU speed");
+            todo!("Update timers");
+
+        Ok(())
+    }
 }

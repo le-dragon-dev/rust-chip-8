@@ -69,6 +69,6 @@ fn main() -> Result<(), String> {
     // Load the rom file
     chip8.load_rom_file(&rom_file)?;
 
-    Ok(())
+    chip8.run()
 }
 
