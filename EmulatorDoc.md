@@ -57,7 +57,7 @@ Rust CHIP-8 emulator documentation
     | FX65 |Mem   |reg_load(Vx, &I)   |Fills V0 to VX (including VX) with values from memory starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified|
 
 ### Memory
-CHIP-8 use **4096 bytes** of memory to run:
+CHIP-8 uses **4096 bytes** of memory to run:
 - The first **512 bytes (0x200)** are occupied by the CHIP-8 interpreter itself (In modern implementations, 
 the interpreter is running outside the 4k memory space, and there is no need to avoid this memory, it is
 common to store font data).
@@ -69,7 +69,7 @@ The stack is only used to store return addresses when subroutines are called.
 In our emulator, we will use 16 levels (16-bit each).
 
 ### Display
-The display is represent by 64 x 32 pixels (monochrome).
+The display is 64 x 32 pixels (monochrome).
 
 ### Timers
 Two timers count down at 60 hertz, until they reach 0.
