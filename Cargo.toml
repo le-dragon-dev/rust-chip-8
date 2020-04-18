@@ -6,3 +6,7 @@ edition = "2018"
 
 [dependencies]
 rand = "*"
+
+[dependencies.sdl2]
+version = "*"
+features = ["gfx"]

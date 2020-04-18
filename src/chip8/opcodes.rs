@@ -134,7 +134,14 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
     // 7XNN
     fn add_const_to_reg(&mut self, op_code: OpCode) {
         let (register, value) = get_reg_and_value_from_opcode(op_code);
-        self.registers[register] += value;
+
+        if value > 255 - self.registers[register] {
+            self.registers[register] = value - (255 - self.registers[register]);
+        }
+        else {
+            self.registers[register] += value;
+        }
+
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
@@ -269,11 +276,11 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
                     let index_pixel_memory = x as usize + x_line as usize + ((y as usize + y_line as usize) * 64usize);
 
                     // If the pixel in memory == 1, then collision -> Vf = 1
-                    if self.gfx[index_pixel_memory] == 1 {
-                        self.registers[CHIP8_REGISTER_VF] = 1;
+                    if self.gfx[index_pixel_memory] == 0xFF {
+                        self.registers[CHIP8_REGISTER_VF] = 0xFF;
                     }
 
-                    self.gfx[index_pixel_memory] ^= 1;
+                    self.gfx[index_pixel_memory] ^= 0xFF;
                 }
             }
         }

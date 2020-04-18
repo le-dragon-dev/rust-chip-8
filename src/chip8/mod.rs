@@ -41,14 +41,14 @@ pub struct Chip8<Screen, Input> where Screen: Display, Input: KeyInput {
 
     // Screen
     gfx   : [u8; CHIP8_PIXEL_COUNT],
-    screen: Screen,
+    pub screen: Screen,
 
     // Timers
     delay_timer: Timer,
     sound_timer: Timer,
 
     // Input
-    key_input: Input
+    pub key_input: Input
 }
 
 impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput {
@@ -82,8 +82,8 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
         }
     }
 
-    // Main loop
-    pub fn run(&mut self) -> Result<(), String> {
+    // Init the emulator
+    pub fn init(&mut self) -> Result<(), String> {
         // Load the fontset
         self.load_fontset();
 
@@ -95,21 +95,41 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
         // Set the PC at 0x200
         self.program_counter = 0x0200;
 
+        Ok(())
+    }
+
+    // Make a step
+    pub fn step(&mut self) -> Result<(), String> {
+        // Check if the program is loaded
+        if self.memory[0x0200] == 0 {
+            return Err(format!("No rom loaded!"));
+        }
+
+        // Get the opcode
+        let op_code: OpCode = ((self.memory[self.program_counter as usize] as OpCode) << 8) +
+            (self.memory[self.program_counter as usize + 1] as OpCode);
+
+        // Execute the opcode
+        self.execute_opcode(op_code);
+
+        // Emulate CPU speed
+        self.emulate_cpu_speed();
+
+        // Update timers
+        self.delay_timer.update();
+        self.sound_timer.update();
+
+        Ok(())
+    }
+
+    // Main loop
+    pub fn init_and_loop(&mut self) -> Result<(), String> {
+        // Init
+        self.init();
+
         // Loop
         loop {
-            // Get the opcode
-            let op_code: OpCode = ((self.memory[self.program_counter as usize] as OpCode) << 8) +
-                                  (self.memory[self.program_counter as usize + 1] as OpCode);
-
-            // Execute the opcode
-            self.execute_opcode(op_code);
-
-            // Emulate CPU speed
-            self.emulate_cpu_speed();
-
-            // Update timers
-            self.delay_timer.update();
-            self.sound_timer.update();
+            self.step();
         }
     }
 
