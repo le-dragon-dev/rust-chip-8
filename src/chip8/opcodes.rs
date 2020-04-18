@@ -64,7 +64,6 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
 
     // 00E0
     fn clear_screen(&mut self) {
-        self.gfx = [0; CHIP8_PIXEL_COUNT];
         self.screen.clean();
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
@@ -254,15 +253,19 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
 
     // DXYN
     fn draw(&mut self, op_code: OpCode) {
-        let (x, y, height) = get_reg_and_reg_and_value_from_opcode(op_code);
+        let (register_1, register_2, height) = get_reg_and_reg_and_value_from_opcode(op_code);
+
+        // Get x and y values from registers
+        let x = self.registers[register_1];
+        let y = self.registers[register_2];
 
         self.registers[CHIP8_REGISTER_VF] = 0;
 
         for y_line in 0..height {
-            let pixel = self.memory[self.addr_register  as usize + y_line as usize];
+            let pixel = self.memory[self.addr_register as usize + y_line as usize];
             for x_line in 0..8 {
                 // If the pixel is 1
-                if pixel & (0x80 >> x_line) != 0 {
+                if (pixel & (0x80 >> x_line)) != 0 {
                     let index_pixel_memory = x as usize + x_line as usize + ((y as usize + y_line as usize) * 64usize);
 
                     // If the pixel in memory == 1, then collision -> Vf = 1
@@ -403,4 +406,70 @@ fn get_reg_and_reg_from_opcode(opcode: OpCode) -> (Register, Register) {
 
 fn get_reg_and_reg_and_value_from_opcode(opcode: OpCode) -> (Register, Register, u8) {
     (get_reg_from_opcode(opcode), (opcode >> 4 & 0x000F) as Register, (opcode & 0x000F) as u8)
+}
+
+// Unit tests
+#[test]
+fn test_get_addr_from_opcode() {
+    //--------------------------------------------------------------------
+    // Setup: Create an opcode with address at 0xBED
+    //--------------------------------------------------------------------
+    let opcode: OpCode = 0xFBED;
+
+    //--------------------------------------------------------------------
+    // Execute and Verify: The address should be 0xBED
+    //--------------------------------------------------------------------
+    assert_eq!(get_addr_from_opcode(opcode), 0xBED, "The address should be BED");
+}
+
+#[test]
+fn test_get_reg_from_opcode() {
+    //--------------------------------------------------------------------
+    // Setup: Create an opcode with register at 7
+    //--------------------------------------------------------------------
+    let opcode: OpCode = 0x17A6;
+
+    //--------------------------------------------------------------------
+    // Execute and Verify: The register should be 7
+    //--------------------------------------------------------------------
+    assert_eq!(get_reg_from_opcode(opcode), 7, "The register should be 7");
+}
+
+#[test]
+fn test_get_reg_and_value_from_opcode() {
+    //--------------------------------------------------------------------
+    // Setup: Create an opcode with register at E and a value at 42
+    //--------------------------------------------------------------------
+    let opcode: OpCode = 0x2E2A;
+
+    //--------------------------------------------------------------------
+    // Execute and Verify: The register should be E and value 42
+    //--------------------------------------------------------------------
+    assert_eq!(get_reg_and_value_from_opcode(opcode), (0x0E, 42), "The register should be E and value 42");
+}
+
+#[test]
+fn test_get_reg_and_reg_from_opcode() {
+    //--------------------------------------------------------------------
+    // Setup: Create an opcode with registers A and B
+    //--------------------------------------------------------------------
+    let opcode: OpCode = 0x1AB6;
+
+    //--------------------------------------------------------------------
+    // Execute and Verify: Registers should be A and B
+    //--------------------------------------------------------------------
+    assert_eq!(get_reg_and_reg_from_opcode(opcode), (0x0A, 0x0B), "Registers should be A and B");
+}
+
+#[test]
+fn test_get_reg_and_reg_and_value_from_opcode() {
+    //--------------------------------------------------------------------
+    // Setup: Create an opcode with registers C and 1 and value 9
+    //--------------------------------------------------------------------
+    let opcode: OpCode = 0xDC19;
+
+    //--------------------------------------------------------------------
+    // Execute and Verify: Registers should be C and 1 and value 9
+    //--------------------------------------------------------------------
+    assert_eq!(get_reg_and_reg_and_value_from_opcode(opcode), (0x0C, 0x01, 9), "Registers should be C and 1 and value 9");
 }
