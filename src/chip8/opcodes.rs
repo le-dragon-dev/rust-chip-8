@@ -6,7 +6,7 @@
 //************************************************************************
 
 use crate::chip8::{Chip8, KeyInput};
-use crate::chip8::constants::{CHIP8_PROGRAM_COUNTER_INC, CHIP8_REGISTER_VF, CHIP8_PIXEL_COUNT};
+use crate::chip8::constants::{CHIP8_PROGRAM_COUNTER_INC, CHIP8_REGISTER_VF};
 use crate::chip8::display::Display;
 use crate::chip8::types::{OpCode, Address, Register};
 
@@ -28,7 +28,7 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
             0x8000..=0x8FFF if opcode & 0x000F == 0x1 => { self.or_reg(opcode); }
             0x8000..=0x8FFF if opcode & 0x000F == 0x2 => { self.and_reg(opcode); }
             0x8000..=0x8FFF if opcode & 0x000F == 0x3 => { self.xor_reg(opcode); }
-            0x8000..=0x8FFF if opcode & 0x000F == 0x4 => { self.and_reg(opcode); }
+            0x8000..=0x8FFF if opcode & 0x000F == 0x4 => { self.add_reg_to_reg(opcode); }
             0x8000..=0x8FFF if opcode & 0x000F == 0x5 => { self.sub_reg1_to_reg0(opcode); }
             0x8000..=0x8FFF if opcode & 0x000F == 0x6 => { self.shift_right_reg(opcode); }
             0x8000..=0x8FFF if opcode & 0x000F == 0x7 => { self.sub_reg0_to_reg1(opcode); }
@@ -350,10 +350,7 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
     // FX29
     fn set_sprite_to_addr(&mut self, op_code: OpCode) {
         let register = get_reg_from_opcode(op_code);
-
         self.addr_register = 0x0050 + self.registers[register] as u16 * 5;
-
-        todo!("I = sprite_addr[Vx]");
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 

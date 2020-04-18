@@ -16,7 +16,6 @@ use crate::chip8::types::{Address, OpCode};
 use std::thread::sleep;
 
 mod constants;
-mod cpu;
 mod display;
 mod input;
 mod memory;
@@ -112,8 +111,6 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
             self.delay_timer.update();
             self.sound_timer.update();
         }
-
-        Ok(())
     }
 
     // Emulate clock speed, should be call after each instruction

@@ -6,7 +6,7 @@
 //************************************************************************
 
 use std::fs::File;
-use std::io::{Seek, SeekFrom, Read, Write};
+use std::io::{Seek, SeekFrom, Read};
 use std::path::Path;
 
 use crate::chip8::{Chip8, KeyInput};
@@ -66,11 +66,12 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
         }
 
         // Return at the start of the file
-        file.seek(SeekFrom::Start(0));
+        file.seek(SeekFrom::Start(0))
+            .map_err(|_| format!("Impossible to read the file {}", path.to_str().unwrap()))?;
 
         // Copy the file into memory
         file.read_exact(&mut self.memory[CHIP8_MEMORY_START as usize..(CHIP8_MEMORY_START as usize + file_size as usize)])
-            .map_err(|e| format!("Impossible to copy the executable into memory"))?;
+            .map_err(|_| format!("Impossible to copy the executable into memory"))?;
 
         Ok(())
     }
