@@ -11,7 +11,7 @@ use crate::chip8::display::Display;
 use crate::chip8::types::{OpCode, Address, Register};
 
 impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput {
-    fn execute_opcode(&mut self, opcode: OpCode) {
+    pub(crate) fn execute_opcode(&mut self, opcode: OpCode) {
         match opcode {
             0x00E0          => { self.clear_screen(); }
             0x00EE          => { self.return_from_subroutine(); }
@@ -59,7 +59,7 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
 
     // 0NNN
     fn call_rca1802_program(&self, _op_code: OpCode) {
-        unimplemented!()
+        //unimplemented!()
     }
 
     // 00E0
@@ -247,7 +247,8 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
 
     // CXNN
     fn rand(&mut self, op_code: OpCode) {
-        todo!("V0 = rand() & NN");
+        let register = get_reg_from_opcode(op_code);
+        self.registers[register] = rand::random();
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
@@ -262,7 +263,7 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
             for x_line in 0..8 {
                 // If the pixel is 1
                 if pixel & (0x80 >> x_line) != 0 {
-                    let index_pixel_memory = 0xF00usize + x as usize + x_line as usize + (y as usize + y_line as usize) * 64usize;
+                    let index_pixel_memory = x as usize + x_line as usize + ((y as usize + y_line as usize) * 64usize);
 
                     // If the pixel in memory == 1, then collision -> Vf = 1
                     if self.gfx[index_pixel_memory] == 1 {
@@ -345,6 +346,10 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
 
     // FX29
     fn set_sprite_to_addr(&mut self, op_code: OpCode) {
+        let register = get_reg_from_opcode(op_code);
+
+        self.addr_register = 0x0050 + self.registers[register] as u16 * 5;
+
         todo!("I = sprite_addr[Vx]");
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }

@@ -17,12 +17,12 @@ impl chip8::Display for BasicTerminalDisplay {
         const PIXEL_FULL : char = '█';
 
         let mut screen = String::new();
-        for y in 0..64 {
+        for y in 0..32 {
             // Jump line
             screen.push('\n');
 
             // Draw new line
-            for x in 0..32 {
+            for x in 0..64 {
                 let index = x + y * 64;
                 if pixels[index] == 0 {
                     screen.push(PIXEL_EMPTY);
@@ -40,7 +40,7 @@ impl chip8::Display for BasicTerminalDisplay {
 
 struct FakeInput;
 impl chip8::KeyInput for FakeInput {
-    fn is_key_pressed(&self, key: u8) -> bool {
+    fn is_key_pressed(&self, _key: u8) -> bool {
         false
     }
 

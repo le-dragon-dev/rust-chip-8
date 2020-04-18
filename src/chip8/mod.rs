@@ -5,14 +5,15 @@
 // CHIP-8 emulator
 //************************************************************************
 
-use std::time::SystemTime;
+use std::time::{SystemTime, Duration};
 
 pub use crate::chip8::display::Display;
 pub use crate::chip8::input::KeyInput;
 
 use crate::chip8::constants::*;
 use crate::chip8::timer::Timer;
-use crate::chip8::types::Address;
+use crate::chip8::types::{Address, OpCode};
+use std::thread::sleep;
 
 mod constants;
 mod cpu;
@@ -84,15 +85,53 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
 
     // Main loop
     pub fn run(&mut self) -> Result<(), String> {
-        todo!("Load fontset");
-        todo!("Check if a program is loaded");
-        todo!("Set the PC at 0x200");
-        todo!("loop");
-            todo!("get the opcode");
-            todo!("match opcode");
-            todo!("Emulate CPU speed");
-            todo!("Update timers");
+        // Load the fontset
+        self.load_fontset();
+
+        // Check if the program is loaded
+        if self.memory[0x0200] == 0 {
+            return Err(format!("No rom loaded!"));
+        }
+
+        // Set the PC at 0x200
+        self.program_counter = 0x0200;
+
+        // Loop
+        loop {
+            // Get the opcode
+            let op_code: OpCode = ((self.memory[self.program_counter as usize] as OpCode) << 8) +
+                                  (self.memory[self.program_counter as usize + 1] as OpCode);
+
+            // Execute the opcode
+            self.execute_opcode(op_code);
+
+            // Emulate CPU speed
+            self.emulate_cpu_speed();
+
+            // Update timers
+            self.delay_timer.update();
+            self.sound_timer.update();
+        }
 
         Ok(())
+    }
+
+    // Emulate clock speed, should be call after each instruction
+    fn emulate_cpu_speed(&mut self) {
+        // Get the current system time
+        let time_now = SystemTime::now();
+
+        // If there is an instruction before, simulate latency
+        if self.last_instruction_time.is_some() {
+            let duration = self.last_instruction_time.unwrap().elapsed().unwrap();
+
+            // We have to sleep
+            if duration < Duration::from_micros(1_000_000 / self.clock_speed as u64) {
+                sleep(Duration::from_micros(1_000_000 / self.clock_speed as u64) - duration);
+            }
+        }
+
+        // Set the new last instruction time
+        self.last_instruction_time = Some(time_now);
     }
 }

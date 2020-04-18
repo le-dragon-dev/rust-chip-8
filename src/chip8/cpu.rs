@@ -13,25 +13,6 @@ use crate::chip8::constants::CHIP8_CPU_CLOCK_SPEED;
 use crate::chip8::display::Display;
 
 impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput {
-    // Emulate clock speed, should be call after each instruction
-    fn emulate_cpu_speed(&mut self) {
-        // Get the current system time
-        let time_now = SystemTime::now();
-
-        // If there is an instruction before, simulate latency
-        if self.last_instruction_time.is_some() {
-            let duration = self.last_instruction_time.unwrap().elapsed().unwrap();
-
-            // We have to sleep
-            if duration < Duration::from_micros(1_000_000 / self.clock_speed as u64) {
-                sleep(duration - Duration::from_micros(1_000_000 / self.clock_speed as u64));
-            }
-        }
-
-        // Set the new last instruction time
-        self.last_instruction_time = Some(time_now);
-    }
-
     // Change the cpu clock speed (0 to default speed)
     pub fn change_cpu_clock_speed(&mut self, clock_speed_hz: u16) {
         if clock_speed_hz == 0 {
