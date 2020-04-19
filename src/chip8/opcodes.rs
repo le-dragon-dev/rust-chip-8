@@ -246,8 +246,8 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
 
     // CXNN
     fn rand(&mut self, op_code: OpCode) {
-        let register = get_reg_from_opcode(op_code);
-        self.registers[register] = rand::random();
+        let (register, value) = get_reg_and_value_from_opcode(op_code);
+        self.registers[register] = rand::random::<u8>() & value;
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
@@ -261,12 +261,12 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
 
         self.registers[CHIP8_REGISTER_VF] = 0;
 
-        for y_line in 0..height {
-            let pixel = self.memory[self.addr_register as usize + y_line as usize];
-            for x_line in 0..8 {
+        for col in 0..height {
+            let pixel = self.memory[self.addr_register as usize + col as usize];
+            for row in 0..8 {
                 // If the pixel is 1
-                if (pixel & (0x80 >> x_line)) != 0 {
-                    let index_pixel_memory = x as usize + x_line as usize + ((y as usize + y_line as usize) * 64usize);
+                if (pixel & (0x80 >> row)) != 0 {
+                    let index_pixel_memory = (x as usize + row as usize + ((y as usize + col as usize) * 64usize)) % 2048;
 
                     // If the pixel in memory == 1, then collision -> Vf = 1
                     if self.gfx[index_pixel_memory] == 0xFF {
