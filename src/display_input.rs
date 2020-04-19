@@ -3,17 +3,11 @@
 // Distributed under the MIT license
 //************************************************************************
 
-use sdl2::gfx::primitives::DrawRenderer;
-use sdl2::pixels::{PixelFormatEnum, Color};
-use sdl2::rect::Rect;
-use sdl2::render::{Canvas, Texture, TextureCreator};
-use sdl2::surface::Surface;
+use sdl2::EventPump;
+use sdl2::event::Event;
+use sdl2::keyboard::{Scancode, Keycode};
 
 use crate::chip8::{Display, KeyInput};
-use sdl2::keyboard::{Scancode, Keycode};
-use sdl2::EventPump;
-use sdl2::video::{WindowContext, Window};
-use sdl2::event::Event;
 
 const SCANCODES: [Scancode; 16] = [
     Scancode::Kp0,
@@ -36,23 +30,17 @@ const SCANCODES: [Scancode; 16] = [
 //-------------------------- DISPLAY --------------------------
 pub struct Screen {
     pub data: [u8; 2048],
-    pub ask_for_clean: bool
 }
 
 impl Screen {
     pub fn new() -> Self {
         Screen {
             data: [0; 2048],
-            ask_for_clean: false
         }
     }
 }
 
 impl Display for Screen {
-    fn clean(&mut self) {
-        self.ask_for_clean = true;
-    }
-
     fn draw(&mut self, pixels: [u8; 2048]) {
         self.data = pixels.clone();
     }
@@ -89,15 +77,28 @@ impl KeyInput for Input<'_> {
         self.event_pump.keyboard_state().is_scancode_pressed(SCANCODES[key as usize])
     }
 
-    fn get_key(&self) -> u8 {
-        let mut keyboard_state = self.event_pump.keyboard_state();
-        let mut scan_codes = keyboard_state.pressed_scancodes();
+    fn get_key(&mut self) -> u8 {
         loop {
-            let valid_key = scan_codes.filter_map(|e| if SCANCODES.contains(&e) {Some(e)} else {None}).collect::<Vec<Scancode>>();
-            if !valid_key.is_empty() {
-                return SCANCODES.iter().position(|p| p == valid_key.first().unwrap()).unwrap() as u8;
+            let event = self.event_pump.wait_event();
+            match event {
+                Event::KeyDown { scancode: Some(Scancode::Kp0), ..} => return 0x0,
+                Event::KeyDown { scancode: Some(Scancode::Kp1), ..} => return 0x1,
+                Event::KeyDown { scancode: Some(Scancode::Kp2), ..} => return 0x2,
+                Event::KeyDown { scancode: Some(Scancode::Kp3), ..} => return 0x3,
+                Event::KeyDown { scancode: Some(Scancode::Kp4), ..} => return 0x4,
+                Event::KeyDown { scancode: Some(Scancode::Kp5), ..} => return 0x5,
+                Event::KeyDown { scancode: Some(Scancode::Kp6), ..} => return 0x6,
+                Event::KeyDown { scancode: Some(Scancode::Kp7), ..} => return 0x7,
+                Event::KeyDown { scancode: Some(Scancode::Kp8), ..} => return 0x8,
+                Event::KeyDown { scancode: Some(Scancode::Kp9), ..} => return 0x9,
+                Event::KeyDown { scancode: Some(Scancode::A), ..}   => return 0xA,
+                Event::KeyDown { scancode: Some(Scancode::B), ..}   => return 0xB,
+                Event::KeyDown { scancode: Some(Scancode::C), ..}   => return 0xC,
+                Event::KeyDown { scancode: Some(Scancode::D), ..}   => return 0xD,
+                Event::KeyDown { scancode: Some(Scancode::E), ..}   => return 0xE,
+                Event::KeyDown { scancode: Some(Scancode::F), ..}   => return 0xF,
+                _ => continue
             }
-            scan_codes = keyboard_state.pressed_scancodes();
         }
     }
 }

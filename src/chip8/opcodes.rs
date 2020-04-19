@@ -64,7 +64,7 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
 
     // 00E0
     fn clear_screen(&mut self) {
-        self.screen.clean();
+        self.gfx = [0; 2048];
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
@@ -117,7 +117,7 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
         let (register_1, register_2) = get_reg_and_value_from_opcode(op_code);
 
         // Jump
-        if self.registers[register_1] == register_2 {
+        if self.registers[register_1 as usize] == self.registers[register_2 as usize] {
             self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
         }
 
@@ -135,13 +135,7 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
     fn add_const_to_reg(&mut self, op_code: OpCode) {
         let (register, value) = get_reg_and_value_from_opcode(op_code);
 
-        if value > 255 - self.registers[register] {
-            self.registers[register] = value - (255 - self.registers[register]);
-        }
-        else {
-            self.registers[register] += value;
-        }
-
+        self.registers[register] = self.registers[register].wrapping_add(value);
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
@@ -178,7 +172,7 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
         let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
 
         self.registers[CHIP8_REGISTER_VF] = (self.registers[register_2] > (0xFF - self.registers[register_1])) as u8;
-        self.registers[register_1] += self.registers[register_2];
+        self.registers[register_1] = self.registers[register_1].wrapping_add(self.registers[register_2]);
 
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
@@ -188,7 +182,7 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
         let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
 
         self.registers[CHIP8_REGISTER_VF] = (self.registers[register_1] >= self.registers[register_2]) as u8;
-        self.registers[register_1] -= self.registers[register_2];
+        self.registers[register_1] = self.registers[register_1].wrapping_sub(self.registers[register_2]);
 
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
@@ -210,7 +204,7 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
         let (register_1, register_2) = get_reg_and_reg_from_opcode(op_code);
 
         self.registers[CHIP8_REGISTER_VF] = (self.registers[register_2] >= self.registers[register_1]) as u8;
-        self.registers[register_1] = self.registers[register_2] - self.registers[register_1];
+        self.registers[register_1] = self.registers[register_2].wrapping_sub(self.registers[register_1]);
 
         self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
@@ -232,7 +226,7 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
         let (register_1, register_2) = get_reg_and_value_from_opcode(op_code);
 
         // Jump
-        if self.registers[register_1] != register_2 {
+        if self.registers[register_1 as usize] != self.registers[register_2 as usize] {
             self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
         }
 
@@ -248,7 +242,6 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
     // BNNN
     fn jump_to_addr(&mut self, op_code: OpCode) {
         self.program_counter = self.registers[0] as u16 + get_addr_from_opcode(op_code);
-        self.program_counter += CHIP8_PROGRAM_COUNTER_INC;
     }
 
     // CXNN
@@ -277,7 +270,7 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
 
                     // If the pixel in memory == 1, then collision -> Vf = 1
                     if self.gfx[index_pixel_memory] == 0xFF {
-                        self.registers[CHIP8_REGISTER_VF] = 0xFF;
+                        self.registers[CHIP8_REGISTER_VF] = 0x01;
                     }
 
                     self.gfx[index_pixel_memory] ^= 0xFF;
@@ -347,7 +340,7 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
         let old_addr_value = self.addr_register;
 
         // Add Vx to I
-        self.addr_register += self.registers[register] as u16;
+        self.addr_register = self.addr_register.wrapping_add(self.registers[register] as u16);
 
         // VF set to 1 if overflow, otherwise 0
         self.registers[CHIP8_REGISTER_VF] = (self.addr_register < old_addr_value) as u8;

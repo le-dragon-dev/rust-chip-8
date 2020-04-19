@@ -6,12 +6,10 @@
 mod chip8;
 mod display_input;
 
-use crate::display_input::{Screen, Input};
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
-use sdl2::gfx::primitives::DrawRenderer;
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
+
+use crate::display_input::{Screen, Input};
 
 const WIDTH : u32 = 640;
 const HEIGHT: u32 = 320;
@@ -41,30 +39,26 @@ fn main() -> Result<(), String> {
     // Init SDL
     let (sdl_context, window) = init_sdl();
     let mut canvas = window.into_canvas().build().unwrap();
-
-    // Init display and input
-    let mut screen = Screen::new();
     let mut event_pump = sdl_context.event_pump().unwrap();
-    let mut input  = Input::new(&mut event_pump);
 
     // Get the rom file path
     let rom_file = args.get(1).cloned().unwrap();
 
     // Prepare the emulator
-    let mut chip8 = chip8::Chip8::new(screen, input);
+    let mut chip8 = chip8::Chip8::new(Screen::new(), Input::new(&mut event_pump));
 
     // Load the rom file
     chip8.load_rom_file(&rom_file)?;
 
     // Init chip-8
-    chip8.init();
+    chip8.init()?;
 
     // Main loop
     loop {
         // Run a step from chip-8
-        chip8.step();
+        chip8.step()?;
 
-        // Update display and input
+        // Clear the canvas
         canvas.set_draw_color(Color::RGB(0,0,0));
         canvas.clear();
 
@@ -75,7 +69,7 @@ fn main() -> Result<(), String> {
                 let pixel = chip8.screen.data[(x + y * 64) as usize];
 
                 if pixel != 0 {
-                    canvas.fill_rect(Rect::new(x*10, y*10, 10, 10));
+                    canvas.fill_rect(Rect::new(x*10, y*10, 10, 10))?;
                 }
             }
         }

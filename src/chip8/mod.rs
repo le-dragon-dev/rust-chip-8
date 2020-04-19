@@ -125,11 +125,11 @@ impl<Screen, Input> Chip8<Screen, Input> where Screen: Display, Input: KeyInput 
     // Main loop
     pub fn init_and_loop(&mut self) -> Result<(), String> {
         // Init
-        self.init();
+        self.init()?;
 
         // Loop
         loop {
-            self.step();
+            self.step()?;
         }
     }
 

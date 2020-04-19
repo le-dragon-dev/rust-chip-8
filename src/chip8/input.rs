@@ -7,5 +7,5 @@
 
 pub trait KeyInput {
     fn is_key_pressed(&self, key: u8) -> bool;
-    fn get_key(&self)                 -> u8;
+    fn get_key(&mut self)             -> u8;
 }
