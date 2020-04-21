@@ -30,12 +30,14 @@ const SCANCODES: [Scancode; 16] = [
 //-------------------------- DISPLAY --------------------------
 pub struct Screen {
     pub data: [u8; 2048],
+    pub require_update: bool
 }
 
 impl Screen {
     pub fn new() -> Self {
         Screen {
             data: [0; 2048],
+            require_update: false
         }
     }
 }
@@ -43,6 +45,7 @@ impl Screen {
 impl Display for Screen {
     fn draw(&mut self, pixels: [u8; 2048]) {
         self.data = pixels.clone();
+        self.require_update = true;
     }
 }
 

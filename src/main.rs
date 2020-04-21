@@ -59,8 +59,11 @@ fn main() -> Result<(), String> {
         chip8.step()?;
 
         // Clear the canvas
-        canvas.set_draw_color(Color::RGB(0,0,0));
-        canvas.clear();
+        if chip8.screen.require_update {
+            canvas.set_draw_color(Color::RGB(0, 0, 0));
+            canvas.clear();
+            chip8.screen.require_update = false;
+        }
 
         // Draw pixels
         canvas.set_draw_color(Color::RGB(255,255,255));

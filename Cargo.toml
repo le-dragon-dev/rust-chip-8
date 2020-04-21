@@ -10,3 +10,7 @@ rand = "*"
 [dependencies.sdl2]
 version = "*"
 features = ["gfx"]
+
+[profile.release]
+panic = "abort"
+
